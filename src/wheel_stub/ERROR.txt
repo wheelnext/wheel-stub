@@ -1,0 +1,22 @@
+
+*******************************************************************************
+
+The installation of {distribution} for version {version} failed.
+
+This is a special placeholder package which downloads a real wheel package
+from {pypi_index}. If {pypi_index} is not reachable, we
+cannot download the real wheel file to install.
+
+You might try installing this package via
+```
+$ pip install --extra-index-url {pypi_index} {distribution}
+```
+
+Here is some debug information about your platform to include in any bug
+report:
+
+Python Version: {python_info}
+Operating System: {os_info}
+CPU Architecture: {cpu_arch}
+{nvidia_smi_info}
+*******************************************************************************

@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2
+
+[build-system]
+requires = ["wheel-stub"]
+build-backend = "wheel_stub.buildapi"
+
+[tool.wheel_stub]
+index_url = "https://pypi.nvidia.com/"
+include_cuda_debuginfo = true

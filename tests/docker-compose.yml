@@ -1,0 +1,16 @@
+version: '2'
+services:
+  pypi:
+    image: openresty/openresty:alpine
+    volumes:
+      - ./templates:/etc/nginx/conf.d
+      - ./pypi_simple/root:/usr/srv
+    ports:
+      - "7000:80"
+  stub_pypi:
+    image: openresty/openresty:alpine
+    volumes:
+      - ./templates:/etc/nginx/conf.d
+      - ./stub_pypi_simple/root:/usr/srv
+    ports:
+      - "7001:80"

@@ -1,0 +1,110 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "wheel-stub"
+dynamic = ["version"]
+description = 'wheel stub package build backend'
+requires-python = ">=3.8"
+license = "Apache-2.0"
+keywords = []
+authors = [
+  { name = "Ethan Smith", email = "etsmith@nvidia.com" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+# NOTE: it is important this stays empty, we cannot assume the user has access to pypi.org or any other packages!
+dependencies = []
+
+[tool.hatch.version]
+path = "src/wheel_stub/__about__.py"
+
+[tool.hatch.env]
+requires = [
+    "hatch-pip-compile"
+]
+
+[tool.hatch.envs.default]
+type = "pip-compile"
+lock-filename = "requirements/requirements-lock.txt"
+pip-compile-hashes = true
+dependencies = [
+  "build",
+  "pytest",
+  "pytest-docker",
+  "packaging",
+  "pytest-xdist",
+  "pre-commit",
+  "virtualenv",
+]
+
+[tool.hatch.envs.default.scripts]
+test = "pytest -n auto --dist=loadgroup {args:tests}"
+fmt = "pre-commit run --all-files"
+
+[[tool.hatch.envs.all.matrix]]
+python = ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
+
+[tool.hatch.envs.types]
+type = "pip-compile"
+lock-filename = "requirements/requirements-types-lock.txt"
+pip-compile-hashes = true
+dependencies = [
+  "mypy>=1.0.0",
+]
+
+[tool.hatch.envs.types.scripts]
+check = "mypy --install-types --non-interactive {args:src/wheel_stub}"
+
+# Ruff config inspired by mypy's:
+# https://github.com/python/mypy/blob/master/pyproject.toml
+
+[tool.ruff]
+line-length = 90
+target-version = "py310"
+fix = true
+
+[tool.ruff.lint]
+ignore = [
+    "B028",  # We don't need explicit stacklevel for warnings
+    "B011",  # Don't use assert False
+    "E501",  # conflicts with black
+    "E402",  # module level import not at top of file
+]
+unfixable = [
+    "F841", # we should get rid of assigned-but-never-used variables
+    "F541", # automatic fix might obscure issue
+    "F601",  # automatic fix might obscure issue
+    "F602",  # automatic fix might obscure issue
+    "B018",  # automatic fix might obscure issue
+]
+select = [
+  "E",       # pycodestyle (error)
+  "F",       # pyflakes
+  "W",       # pycodestyle (warning)
+  "B",       # flake8-bugbear
+  "I",       # isort
+  "RUF100",  # Unused noqa comments
+  "PGH004",  # blanket noqa comments
+  "UP",      # pyupgrade
+  "C4",      # flake8-comprehensions
+  "SIM201", "SIM202",  # simplify comparisons involving not
+  "ISC001",  # implicitly concatenated string
+  "RET501", "RET502",  # better return None handling
+]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
