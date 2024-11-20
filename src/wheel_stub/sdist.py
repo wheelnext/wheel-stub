@@ -101,7 +101,9 @@ class SDistBuilder:
                     ) as metadata_file:
                         metadata_bytes = metadata_file.read()
             else:
-                raise RuntimeError(f"Unsupported package format for file {self.source_wheel}")
+                raise RuntimeError(
+                    f"Unsupported package format for file {self.source_wheel}"
+                )
 
             # Verify METADATA is valid
             parsed_metadata = parse_metadata(metadata_bytes.decode("utf-8"))
@@ -144,7 +146,9 @@ class SDistBuilder:
                 name=pyproject_toml_path, arcname="pyproject.toml"
             )
             # Do not do a deep copy otherwise the file pointer will raise an error
-            pyproj_tarinfo = pyproj_tarinfo.replace(name=os.path.join(sdist_dir, "pyproject.toml"), deep=False)
+            pyproj_tarinfo = pyproj_tarinfo.replace(
+                name=os.path.join(sdist_dir, "pyproject.toml"), deep=False
+            )
             pyproj_tarinfo = normalize_tarinfo(pyproj_tarinfo, mtime)
             with open(pyproject_toml_path, "rb") as f:
                 toml_dict = tomllib.load(f)
@@ -170,7 +174,9 @@ class SDistBuilder:
                         content = f.read()
                         # toml settings can exist in their own table
                         content += b"\n[tool.wheel_stub]\nstub_only = true\n"
-                        pyproj_tarinfo = tarfile.TarInfo(os.path.join(sdist_dir, "pyproject.toml"))
+                        pyproj_tarinfo = tarfile.TarInfo(
+                            os.path.join(sdist_dir, "pyproject.toml")
+                        )
                         pyproj_tarinfo.size = len(content)
                         pyproj_tarinfo = normalize_tarinfo(pyproj_tarinfo, mtime)
                         output = io.BytesIO(content)

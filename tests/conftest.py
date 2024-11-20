@@ -50,9 +50,11 @@ INDEX = """
 </html>
 """
 
+
 @pytest.fixture(scope="session")
 def docker_compose_command() -> str:
     return "docker-compose"
+
 
 @pytest.fixture(scope="session")
 def build_backend_wheel():
