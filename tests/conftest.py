@@ -52,6 +52,11 @@ INDEX = """
 
 
 @pytest.fixture(scope="session")
+def docker_compose_command() -> str:
+    return "docker-compose"
+
+
+@pytest.fixture(scope="session")
 def build_backend_wheel():
     root_dir = BASE_DIR.parent
     dist_dir = root_dir / "dist"
@@ -66,14 +71,9 @@ def install_in_pypi(build_backend_wheel):
     pypi_simple = BASE_DIR / "pypi_simple" / "root"
     pkg_dir = pypi_simple / "wheel-stub"
     pkg_dir.mkdir(exist_ok=True)
-    os.chown(pkg_dir, 1000, 999)
     shutil.copy(build_backend_wheel, pkg_dir)
-    os.chown(pkg_dir / build_backend_wheel.name, 1000, 999)
-    os.chmod(pkg_dir / build_backend_wheel.name, 644)
     with open(pkg_dir / "index.html", "w") as f:
         f.write(INDEX.format(build_backend_wheel.name))
-    os.chown(pkg_dir / "index.html", 1000, 999)
-    os.chmod(pkg_dir / "index.html", 644)
     yield True
     shutil.rmtree(pkg_dir, ignore_errors=True)
 
