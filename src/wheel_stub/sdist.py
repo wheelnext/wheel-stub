@@ -44,7 +44,9 @@ def normalize_tarinfo(tarinfo, mtime):
     tarinfo.uname = ""
     tarinfo.gname = ""
     tarinfo.mtime = mtime
-    if tarinfo.mode & 0o100:
+    if tarinfo.type == tarfile.DIRTYPE:
+        tarinfo.mode = 0o775
+    elif tarinfo.mode & 0o100:
         tarinfo.mode = 0o755
     else:
         tarinfo.mode = 0o644
