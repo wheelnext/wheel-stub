@@ -11,6 +11,7 @@ dynamic = ["version"]
 description = 'wheel stub package build backend'
 requires-python = ">=3.8"
 license = "Apache-2.0"
+readme = "README.md"
 keywords = []
 authors = [
   { name = "Ethan Smith", email = "etsmith@nvidia.com" },
