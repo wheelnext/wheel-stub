@@ -128,7 +128,7 @@ class SDistBuilder:
             del parsed_metadata["Supported-Platform"]
             pkg_info_bytes = str(parsed_metadata).encode("utf-8")
 
-            sdist_dir = f"{self.distribution}-{self.version}"
+            sdist_dir = f"{replace_underscore(self.distribution)}-{self.version}"
             sdist_dir_tarinfo = tarfile.TarInfo(sdist_dir)
             sdist_dir_tarinfo.type = tarfile.DIRTYPE
             normalize_tarinfo(sdist_dir_tarinfo, mtime)
