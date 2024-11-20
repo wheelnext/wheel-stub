@@ -52,7 +52,7 @@ dependencies = [
 ]
 
 [tool.hatch.envs.default.scripts]
-test = "pytest -n auto --dist=loadgroup {args:tests}"
+test = "pytest -n auto --ignore=demo --dist=loadgroup {args:tests}"
 fmt = "pre-commit run --all-files"
 
 [[tool.hatch.envs.all.matrix]]
