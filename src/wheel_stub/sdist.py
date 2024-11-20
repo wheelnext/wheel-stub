@@ -101,11 +101,7 @@ class SDistBuilder:
                     ) as metadata_file:
                         metadata_bytes = metadata_file.read()
             else:
-                with tarfile.open(self.source_wheel, mode="r:gz") as t:
-                    with t.extractfile(
-                        f"{self.distribution}-{self.version}/PKG-INFO"
-                    ) as tf:
-                        metadata_bytes = tf.read()
+                raise RuntimeError(f"Unsupported package format for file {self.source_wheel}")
 
             # Verify METADATA is valid
             parsed_metadata = parse_metadata(metadata_bytes.decode("utf-8"))
@@ -127,8 +123,14 @@ class SDistBuilder:
             del parsed_metadata["Platform"]
             del parsed_metadata["Supported-Platform"]
             pkg_info_bytes = str(parsed_metadata).encode("utf-8")
-            # Read size, then seek to start for the tar file to read the actual data
-            pkg_info_tarinfo = tarfile.TarInfo("PKG-INFO")
+
+            sdist_dir = f"{self.distribution}-{self.version}"
+            sdist_dir_tarinfo = tarfile.TarInfo(sdist_dir)
+            sdist_dir_tarinfo.type = tarfile.DIRTYPE
+            normalize_tarinfo(sdist_dir_tarinfo, mtime)
+            tar.addfile(sdist_dir_tarinfo)
+
+            pkg_info_tarinfo = tarfile.TarInfo(os.path.join(sdist_dir, "PKG-INFO"))
             pkg_info_tarinfo.size = len(pkg_info_bytes)
             pkg_info_tarinfo = normalize_tarinfo(pkg_info_tarinfo, mtime)
             pkg_info_fp = BytesIO(pkg_info_bytes)
@@ -141,6 +143,8 @@ class SDistBuilder:
             pyproj_tarinfo = tar.gettarinfo(
                 name=pyproject_toml_path, arcname="pyproject.toml"
             )
+            # Do not do a deep copy otherwise the file pointer will raise an error
+            pyproj_tarinfo = pyproj_tarinfo.replace(name=os.path.join(sdist_dir, "pyproject.toml"), deep=False)
             pyproj_tarinfo = normalize_tarinfo(pyproj_tarinfo, mtime)
             with open(pyproject_toml_path, "rb") as f:
                 toml_dict = tomllib.load(f)
@@ -166,7 +170,7 @@ class SDistBuilder:
                         content = f.read()
                         # toml settings can exist in their own table
                         content += b"\n[tool.wheel_stub]\nstub_only = true\n"
-                        pyproj_tarinfo = tarfile.TarInfo("pyproject.toml")
+                        pyproj_tarinfo = tarfile.TarInfo(os.path.join(sdist_dir, "pyproject.toml"))
                         pyproj_tarinfo.size = len(content)
                         pyproj_tarinfo = normalize_tarinfo(pyproj_tarinfo, mtime)
                         output = io.BytesIO(content)
