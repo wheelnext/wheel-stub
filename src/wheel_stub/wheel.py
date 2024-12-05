@@ -21,8 +21,8 @@ import sys
 import time
 import warnings
 from html.parser import HTMLParser
-from urllib.error import URLError
-from urllib.parse import urlparse
+from urllib.error import HTTPError, URLError
+from urllib.parse import urljoin, urlparse
 from urllib.request import urlopen
 
 if sys.version_info >= (3, 11):
@@ -156,8 +156,14 @@ def get_base_domain(config):
 
 def download_manual(wheel_directory, distribution, version, config):
     base_domain = get_base_domain(config)
-    project_url = f"{base_domain}/{distribution}/"
-    index_response = urlopen_with_retry(project_url)
+    logger.debug(f"Calculated base domain: {base_domain}")
+    # MUST have trailing slash for our index
+    project_url = f"{urljoin(base_domain, distribution)}/"
+    logger.debug(f"Querying project url: {project_url}")
+    try:
+        index_response = urlopen_with_retry(project_url)
+    except HTTPError as e:
+        raise RuntimeError(f"Failed to open project URL {project_url}") from e
     html = index_response.read().decode("utf-8")
     parser = WheelFilter()
     parser.feed(html)
@@ -165,9 +171,12 @@ def download_manual(wheel_directory, distribution, version, config):
     wheel, (scheme, hash) = get_compatible_wheel(parser.wheel_files, version)
     if wheel is None:
         raise RuntimeError(f"Didn't find wheel for {distribution} {version}")
-    wheel_url = f"{project_url}{wheel}"
-    print(f"Downloading wheel {wheel}")
-    wheel_response = urlopen_with_retry(wheel_url)
+    wheel_url = urljoin(project_url, wheel)
+    logger.info(f"Downloading wheel {wheel}")
+    try:
+        wheel_response = urlopen_with_retry(wheel_url)
+    except HTTPError as e:
+        raise RuntimeError(f"Failed to open wheel URL {wheel_url}") from e
 
     # Only check the hash if we have one and know the scheme
     if scheme is not None and hash is not None:
