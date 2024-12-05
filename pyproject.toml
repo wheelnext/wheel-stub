@@ -14,7 +14,7 @@ license = "Apache-2.0"
 readme = "README.md"
 keywords = []
 authors = [
-  { name = "Ethan Smith", email = "etsmith@nvidia.com" },
+  { name = "Emma Smith", email = "etsmith@nvidia.com" },
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
