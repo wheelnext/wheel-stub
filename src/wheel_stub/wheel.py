@@ -151,13 +151,14 @@ def get_base_domain(config):
     index_url = config.get("index_url", None)
     if WHEEL_STUB_PIP_INDEX_URL:
         index_url = WHEEL_STUB_PIP_INDEX_URL
+    if index_url and not index_url.endswith("/"):
+        index_url += "/"
     return index_url
 
 
 def download_manual(wheel_directory, distribution, version, config):
     base_domain = get_base_domain(config)
     logger.debug(f"Calculated base domain: {base_domain}")
-    # MUST have trailing slash for our index
     project_url = f"{urljoin(base_domain, distribution)}/"
     logger.debug(f"Querying project url: {project_url}")
     try:
