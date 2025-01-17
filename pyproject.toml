@@ -14,7 +14,7 @@ license = "Apache-2.0"
 readme = "README.md"
 keywords = []
 authors = [
-  { name = "Emma Smith", email = "etsmith@nvidia.com" },
+  { name = "Emma Smith", email = "emsmith@nvidia.com" },
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -41,7 +41,6 @@ requires = [
 [tool.hatch.envs.default]
 type = "pip-compile"
 lock-filename = "requirements/requirements-lock.txt"
-pip-compile-hashes = true
 dependencies = [
   "build",
   "pytest",
@@ -62,7 +61,6 @@ python = ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
 [tool.hatch.envs.types]
 type = "pip-compile"
 lock-filename = "requirements/requirements-types-lock.txt"
-pip-compile-hashes = true
 dependencies = [
   "mypy>=1.0.0",
 ]
