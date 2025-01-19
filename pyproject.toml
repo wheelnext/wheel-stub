@@ -46,13 +46,12 @@ dependencies = [
   "pytest",
   "pytest-docker",
   "packaging",
-  "pytest-xdist",
   "pre-commit",
   "virtualenv",
 ]
 
 [tool.hatch.envs.default.scripts]
-test = "pytest -n auto --ignore=demo --dist=loadgroup {args:tests}"
+test = "pytest --ignore=demo {args:tests}"
 fmt = "pre-commit run --all-files"
 
 [[tool.hatch.envs.all.matrix]]
