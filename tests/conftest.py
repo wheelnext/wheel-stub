@@ -53,7 +53,10 @@ INDEX = """
 
 @pytest.fixture(scope="session")
 def docker_compose_command() -> str:
-    return "docker-compose"
+    if shutil.which("docker-compose"):
+        return "docker-compose"
+    else:
+        return "docker compose"
 
 
 @pytest.fixture(scope="session")
