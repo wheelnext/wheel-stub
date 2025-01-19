@@ -5,10 +5,6 @@ import subprocess
 import pytest
 
 
-# NOTE: The docker xdist group is so that these tests
-# are not run in parralel and two docker instances contend
-# for the same port
-@pytest.mark.xdist_group(name="docker")
 @pytest.mark.parametrize(
     "requirement",
     [
