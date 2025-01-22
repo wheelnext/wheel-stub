@@ -56,9 +56,12 @@ WHEEL_STUB_NO_PIP = os.environ.get("WHEEL_STUB_NO_PIP", False)
 class WheelFilter(HTMLParser):
     """Parse PEP 503 project index page to get the list of wheels and their hash."""
 
-    def __init__(self, *, convert_charrefs: bool = True) -> None:
+    def __init__(
+        self, *, convert_charrefs: bool = True, project_url: str = None
+    ) -> None:
         super().__init__(convert_charrefs=convert_charrefs)
         self.wheel_files = []
+        self.project_url = project_url
 
     def handle_starttag(self, tag, attrs) -> None:
         if tag == "a":
@@ -72,8 +75,14 @@ class WheelFilter(HTMLParser):
                         scheme, hash = parsed.fragment.split("=")
                     else:
                         scheme, hash = None, None
-                    logger.debug("Found wheel: %s", parsed.path)
-                    self.wheel_files.append((parsed.path, (scheme, hash)))
+                    wheel_filename = os.path.basename(parsed.path)
+                    # Empty netloc means relative URL
+                    if not parsed.netloc:
+                        wheel_url = urljoin(self.project_url, parsed.path)
+                    else:
+                        wheel_url = value
+                    logger.debug("Found wheel: %s", wheel_filename)
+                    self.wheel_files.append((wheel_url, wheel_filename, (scheme, hash)))
 
 
 def urlopen_with_retry(url, num_retries=4, **kwargs):
@@ -132,18 +141,18 @@ def get_compatible_wheel(wheel_files, version):
     interp_name = interpreter_name()
     interp_version = interpreter_version()
     this_interp_tag = f"{interp_name}{interp_version}"
-    for wheel, hash in wheel_files:
-        _name, ver, _build_num, tags = parse_wheel_filename(wheel)
+    for wheel_url, wheel_filename, hash in wheel_files:
+        _name, ver, _build_num, tags = parse_wheel_filename(wheel_filename)
         if str(ver) != version:
             continue
         # tags is a frozenset since there *can* be compressed tags,
         # e.g. manylinux2014_x86_64.manylinux_2_28_x86_64
 
         for tag in tags:
-            logger.info("Testing wheel %s against tag %s", wheel, tag)
+            logger.info("Testing wheel %s against tag %s", wheel_filename, tag)
             if is_compatible_tag(tag, this_interp_tag, system_tags):
-                return wheel, hash
-    return None, (None, None)
+                return wheel_url, wheel_filename, hash
+    return None, None, (None, None)
 
 
 def get_base_domain(config):
@@ -166,14 +175,15 @@ def download_manual(wheel_directory, distribution, version, config):
     except HTTPError as e:
         raise RuntimeError(f"Failed to open project URL {project_url}") from e
     html = index_response.read().decode("utf-8")
-    parser = WheelFilter()
+    parser = WheelFilter(project_url=project_url)
     parser.feed(html)
     # TODO: should we support multiple compatible wheels?
-    wheel, (scheme, hash) = get_compatible_wheel(parser.wheel_files, version)
-    if wheel is None:
+    wheel_url, wheel_filename, (scheme, hash) = get_compatible_wheel(
+        parser.wheel_files, version
+    )
+    if wheel_url is None:
         raise RuntimeError(f"Didn't find wheel for {distribution} {version}")
-    wheel_url = urljoin(project_url, wheel)
-    logger.info(f"Downloading wheel {wheel}")
+    logger.info(f"Downloading wheel {wheel_filename}")
     try:
         wheel_response = urlopen_with_retry(wheel_url)
     except HTTPError as e:
@@ -189,7 +199,7 @@ def download_manual(wheel_directory, distribution, version, config):
             ) from None
     else:
         file_hash = None
-    with open(wheel_directory / wheel, "wb") as f:
+    with open(wheel_directory / wheel_filename, "wb") as f:
         CHUNK = 16 * 1024
         while True:
             data = wheel_response.read(CHUNK)
@@ -202,7 +212,7 @@ def download_manual(wheel_directory, distribution, version, config):
         assert (
             file_hash.hexdigest() == hash
         ), f"Downloaded wheel and {scheme} don't match! {file_hash.hexdigest()}, {hash}"
-    return wheel
+    return wheel_filename
 
 
 def get_metadata_from_pkg_info(src_dir):
