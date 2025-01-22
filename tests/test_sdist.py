@@ -42,6 +42,9 @@ def run_build(wheel, tmpdir, **kwargs):
     )
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 9), reason="Tar creation changed in Python 3.9."
+)
 @pytest.mark.parametrize("wheel,expected_sdist", sample_wheels_and_sdists())
 def test_sdist_from_wheel(
     wheel, expected_sdist, pyproject_toml_temp_dir, build_backend_wheel
