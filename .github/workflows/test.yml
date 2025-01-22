@@ -27,7 +27,7 @@ jobs:
         run: hatch env create
         env:
           HATCH_PYTHON: ${{ matrix.python-version }}
-      - name: Run tests
-        run: hatch run test
       - name: Run pre-commit checks
         run: hatch run fmt
+      - name: Run tests
+        run: hatch run test
