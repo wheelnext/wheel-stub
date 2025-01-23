@@ -14,7 +14,7 @@ This is a PEP 517 build backend to act as a "soft link" between a package releas
    ```
 6. Build the sdist:
    ```
-   PIP_FIND_LINKS=`pwd`/../dist python -m build --sdist --config-setting source_wheel=nvidia_cuda_runtime_cu12-12.4.99-py3-none-manylinux2014_x86_64.whl
+   PIP_FIND_LINKS=`pwd`/../dist PIP_NO_INDEX=1 python -m build --sdist --config-setting source_wheel=nvidia_cuda_runtime_cu12-12.4.99-py3-none-manylinux2014_x86_64.whl
    ```
    There should now be a new `dist/` folder with e.g. `nvidia_cuda_runtime_cu12-12.4.99.tar.gz`
 8. Install the sdist:
