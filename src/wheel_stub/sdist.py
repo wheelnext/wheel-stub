@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import gzip
 import io
 import os
@@ -148,10 +149,10 @@ class SDistBuilder:
                 name=pyproject_toml_path, arcname="pyproject.toml"
             )
             # Do not do a deep copy otherwise the file pointer will raise an error
-            pyproj_tarinfo = pyproj_tarinfo.replace(
-                name=os.path.join(sdist_dir, "pyproject.toml"), deep=False
-            )
-            pyproj_tarinfo = normalize_tarinfo(pyproj_tarinfo, mtime)
+            # NOTE: do *not* use tarfile replace here, as it is not on older versions of Python
+            new_pyproj_tarinfo = copy.copy(pyproj_tarinfo)
+            new_pyproj_tarinfo.name = os.path.join(sdist_dir, "pyproject.toml")
+            pyproj_tarinfo = normalize_tarinfo(new_pyproj_tarinfo, mtime)
             with open(pyproject_toml_path, "rb") as f:
                 toml_dict = tomllib.load(f)
                 try:
