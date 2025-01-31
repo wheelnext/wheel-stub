@@ -28,6 +28,7 @@ if sys.version_info >= (3, 11):
 else:
     import wheel_stub._vendor.tomli as tomllib
 
+from wheel_stub._vendor.packaging.requirements import Requirement
 from wheel_stub._vendor.packaging.utils import (
     parse_sdist_filename,
     parse_wheel_filename,
@@ -52,6 +53,39 @@ def normalize_tarinfo(tarinfo, mtime):
     else:
         tarinfo.mode = 0o644
     return tarinfo
+
+
+def is_stub_only_marked(toml_dict):
+    """
+    True if stub_only is already marked.
+    False if it isn't
+
+    Raises error if any required table is missing or if using the old
+    [tool.wheel_stub].stub_only
+    """
+    try:
+        tool_dict = toml_dict["tool"]
+        wheel_stub_dict = tool_dict["wheel_stub"]
+    except KeyError:
+        raise RuntimeError(
+            "Missing [tool.wheel_stub] section in pyproject.toml"
+        ) from None
+    if wheel_stub_dict.get("stub_only", None) is not None:
+        raise RuntimeError(
+            "[tool.wheel_stub].stub_only has moved to [tool.wheel_stub.extra].stub_only"
+        )
+
+    extra_table = wheel_stub_dict.get("extra", None)
+    if not extra_table:
+        return False
+    stub_only = extra_table.get("stub_only", None)
+    if stub_only is None:
+        return False
+    if not stub_only:
+        raise RuntimeError(
+            "Cannot set [tool.wheel_stub.extra].stub_only to false. Package depends on non-PyPi dependency."
+        )
+    return True
 
 
 class SDistBuilder:
@@ -96,7 +130,7 @@ class SDistBuilder:
 
         # There are two files we include in an sdist: the pyproject.toml, and PKG-INFO, which holds the metadata
         try:
-            stub_only = False
+            mark_stub_only = False
             if self.source_wheel.endswith(".whl"):
                 with zipfile.ZipFile(self.source_wheel, mode="r") as z:
                     with z.open(
@@ -118,12 +152,14 @@ class SDistBuilder:
             requires_dists = parsed_metadata.get_all("Requires-Dist")
             if requires_dists is not None:
                 for requires_dist in requires_dists:
+                    req = Requirement(requires_dist)
                     # If the wheel has direct dependencies, the sdist can
                     # only act as a stub, the user should point pip etc. to pypi.nvidia.com
-                    if "@" in requires_dist:
+                    # Based on the check PyPI makes here: https://github.com/pypi/warehouse/blob/2512a4ed67b9c610f3227adce14f40652b9e3608/warehouse/forklift/metadata.py#L216
+                    if req.url:
                         # We must delete the dependencies so the stub can be uploaded to PyPi
                         del parsed_metadata["Requires-Dist"]
-                        stub_only = True
+                        mark_stub_only = True
             # Make the sdist cross-platform
             del parsed_metadata["Platform"]
             del parsed_metadata["Supported-Platform"]
@@ -155,38 +191,22 @@ class SDistBuilder:
             pyproj_tarinfo = normalize_tarinfo(new_pyproj_tarinfo, mtime)
             with open(pyproject_toml_path, "rb") as f:
                 toml_dict = tomllib.load(f)
-                try:
-                    tool_dict = toml_dict["tool"]
-                    wheel_stub_dict = tool_dict["wheel_stub"]
-                except KeyError:
-                    raise RuntimeError(
-                        "Missing [tool.wheel_stub] section in pyproject.toml"
-                    ) from None
-            if stub_only:
-                if hasattr(wheel_stub_dict, "stub_only"):
-                    if wheel_stub_dict["stub_only"]:
-                        # already configured stub-only, we can just write the contents
-                        with open(pyproject_toml_path, "rb") as f:
-                            tar.addfile(pyproj_tarinfo, fileobj=f)
-                    else:
-                        raise RuntimeError(
-                            "Cannot set [tool.wheel_stub].stub_only to false. Package depends on non-PyPi dependency."
-                        )
-                else:
-                    with open(pyproject_toml_path, "rb") as f:
-                        content = f.read()
-                        # toml settings can exist in their own table
-                        content += b"\n[tool.wheel_stub]\nstub_only = true\n"
-                        pyproj_tarinfo = tarfile.TarInfo(
-                            os.path.join(sdist_dir, "pyproject.toml")
-                        )
-                        pyproj_tarinfo.size = len(content)
-                        pyproj_tarinfo = normalize_tarinfo(pyproj_tarinfo, mtime)
-                        output = io.BytesIO(content)
-                        try:
-                            tar.addfile(pyproj_tarinfo, fileobj=output)
-                        finally:
-                            output.close()
+            if mark_stub_only and not is_stub_only_marked(toml_dict):
+                # We need to mark the package as stub_only
+                with open(pyproject_toml_path, "rb") as f:
+                    content = f.read()
+                    # toml settings can exist in their own table
+                    content += b"\n[tool.wheel_stub.extra]\nstub_only = true\n"
+                    pyproj_tarinfo = tarfile.TarInfo(
+                        os.path.join(sdist_dir, "pyproject.toml")
+                    )
+                    pyproj_tarinfo.size = len(content)
+                    pyproj_tarinfo = normalize_tarinfo(pyproj_tarinfo, mtime)
+                    output = io.BytesIO(content)
+                    try:
+                        tar.addfile(pyproj_tarinfo, fileobj=output)
+                    finally:
+                        output.close()
             else:
                 with open(pyproject_toml_path, "rb") as f:
                     tar.addfile(pyproj_tarinfo, fileobj=f)
