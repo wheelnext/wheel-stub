@@ -240,7 +240,10 @@ def download_wheel(wheel_directory, config_settings):
     config = get_config_from_pyprojecttoml(src_dir)
     distribution = canonicalize_name(metadata["Name"])
     version = metadata["Version"]
-    if config.get("stub_only", None):
+    extra_conf = config.get("extra", None)
+    if extra_conf:
+        config.update(**extra_conf)
+    if config.get("stub_only", False):
         report_install_failure(distribution, version, config, None)
     try:
         return download_manual(wheel_directory, distribution, version, config)
