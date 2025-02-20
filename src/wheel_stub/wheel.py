@@ -216,7 +216,7 @@ def download_manual(wheel_directory, distribution, version, config):
 
 
 def get_metadata_from_pkg_info(src_dir):
-    with open(src_dir / "PKG-INFO") as f:
+    with open(src_dir / "PKG-INFO", encoding="utf-8") as f:
         pkg_info = f.read()
     return parse_metadata(pkg_info)
 
