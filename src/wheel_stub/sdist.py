@@ -97,6 +97,7 @@ class SDistBuilder:
         self.target_directory = pathlib.Path(target_directory)
         os.makedirs(self.target_directory, exist_ok=True)
         self.source_wheel = config_settings["source_wheel"]
+        self.stub_suffix = config_settings.get("stub_suffix", "")
         if not os.path.exists(self.source_wheel):
             raise FileNotFoundError(f"Could not find {self.source_wheel}")
 
@@ -113,9 +114,11 @@ class SDistBuilder:
 
     def build(self):
         base_dir = pathlib.Path(os.getcwd())
+        # Add optional stub suffix to filename
+        filename_suffix = f".{self.stub_suffix}" if self.stub_suffix else ""
         sdist = (
             self.target_directory
-            / f"{replace_underscore(self.distribution)}-{self.version}.tar.gz"
+            / f"{replace_underscore(self.distribution)}-{self.version}{filename_suffix}.tar.gz"
         )
         pyproject_toml_path = base_dir / "pyproject.toml"
         # Make sdist generation reproducible, setting the dates to SOURCE_DATE_EPOCH or April 5, 1993
@@ -165,7 +168,7 @@ class SDistBuilder:
             del parsed_metadata["Supported-Platform"]
             pkg_info_bytes = str(parsed_metadata).encode("utf-8")
 
-            sdist_dir = f"{replace_underscore(self.distribution)}-{self.version}"
+            sdist_dir = f"{replace_underscore(self.distribution)}-{self.version}{filename_suffix}"
             sdist_dir_tarinfo = tarfile.TarInfo(sdist_dir)
             sdist_dir_tarinfo.type = tarfile.DIRTYPE
             normalize_tarinfo(sdist_dir_tarinfo, mtime)
