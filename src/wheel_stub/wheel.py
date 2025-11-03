@@ -76,6 +76,12 @@ class WheelFilter(HTMLParser):
                     else:
                         scheme, hash = None, None
                     wheel_filename = os.path.basename(parsed.path)
+                    # Validate wheel filename before adding it
+                    try:
+                        parse_wheel_filename(wheel_filename)
+                    except Exception as e:
+                        logger.debug("Skipping invalid wheel filename %s: %s", wheel_filename, e)
+                        continue
                     # Empty netloc means relative URL
                     if not parsed.netloc:
                         wheel_url = urljoin(self.project_url, parsed.path)
