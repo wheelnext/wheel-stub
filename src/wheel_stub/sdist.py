@@ -220,5 +220,15 @@ class SDistBuilder:
         # Theser are required by the spec
         assert "Name" in parsed, "Must have a distribution name"
         assert "Version" in parsed, "Must have a version"
+
+        # 'License' was deprecated in Metadata Version 2.4 (PEP 639)
+        metadata_ver_major, metadata_ver_minor, *_ = parsed["Metadata-Version"].split(
+            "."
+        )
+
         # This is very important for releasing software on pypi.org
-        assert "License" in parsed, "Software should have a license"
+        error_msg = "Software should have a license"
+        if int(metadata_ver_major) <= 2 and int(metadata_ver_minor) < 4:
+            assert "License" in parsed, error_msg
+        else:
+            assert ("License" in parsed) or ("License-Expression" in parsed), error_msg
