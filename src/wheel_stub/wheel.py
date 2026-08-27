@@ -53,6 +53,10 @@ WHEEL_STUB_PIP_INDEX_URL = os.environ.get("WHEEL_STUB_PIP_INDEX_URL", None)
 WHEEL_STUB_NO_PIP = os.environ.get("WHEEL_STUB_NO_PIP", False)
 
 
+class _ShortReadError(RuntimeError):
+    pass
+
+
 class WheelFilter(HTMLParser):
     """Parse PEP 503 project index page to get the list of wheels and their hash."""
 
@@ -85,12 +89,15 @@ class WheelFilter(HTMLParser):
                     self.wheel_files.append((wheel_url, wheel_filename, (scheme, hash)))
 
 
-def urlopen_with_retry(url, num_retries=4, **kwargs):
-    """Retry HTTP call with backoff"""
+def urlopen_with_retry(url, num_retries=4, response_handler=None, **kwargs):
+    """Retry an HTTP request with backfoff"""
     for i in range(1, num_retries + 1):
         try:
-            return urlopen(url, **kwargs)
-        except URLError:
+            response = urlopen(url, **kwargs)
+            if response_handler is None:
+                return response
+            return response_handler(response)
+        except (URLError, _ShortReadError):
             if i == num_retries:
                 raise
         time.sleep(1.2**i)
@@ -184,34 +191,52 @@ def download_manual(wheel_directory, distribution, version, config):
     if wheel_url is None:
         raise RuntimeError(f"Didn't find wheel for {distribution} {version}")
     logger.info(f"Downloading wheel {wheel_filename}")
-    try:
-        wheel_response = urlopen_with_retry(wheel_url)
-    except HTTPError as e:
-        raise RuntimeError(f"Failed to open wheel URL {wheel_url}") from e
 
     # Only check the hash if we have one and know the scheme
     if scheme is not None and hash is not None:
         try:
-            file_hash = getattr(hashlib, scheme.lower())()
+            hash_constructor = getattr(hashlib, scheme.lower())
         except AttributeError:
             raise RuntimeError(
                 f"Hash algorithm {scheme} is unsupported on this Python."
             ) from None
     else:
-        file_hash = None
-    with open(wheel_directory / wheel_filename, "wb") as f:
-        CHUNK = 16 * 1024
-        while True:
-            data = wheel_response.read(CHUNK)
-            if not data:
-                break
-            if file_hash is not None:
-                file_hash.update(data)
-            f.write(data)
-    if file_hash is not None:
-        assert (
-            file_hash.hexdigest() == hash
-        ), f"Downloaded wheel and {scheme} don't match! {file_hash.hexdigest()}, {hash}"
+        hash_constructor = None
+
+    def download_response(wheel_response):
+        expected_length = None
+        content_length_header = wheel_response.getheader("Content-Length")
+        if content_length_header is not None:
+            try:
+                expected_length = int(content_length_header)
+            except ValueError:
+                expected_length = None
+        file_hash = hash_constructor() if hash_constructor is not None else None
+        total_bytes = 0
+        with open(wheel_directory / wheel_filename, "wb") as f:
+            CHUNK = 16 * 1024
+            while True:
+                data = wheel_response.read(CHUNK)
+                if not data:
+                    break
+                total_bytes += len(data)
+                if file_hash is not None:
+                    file_hash.update(data)
+                f.write(data)
+        if expected_length is not None and total_bytes != expected_length:
+            raise _ShortReadError(
+                f"Download truncated for {wheel_filename}: expected "
+                f"{expected_length} bytes, got {total_bytes} bytes"
+            )
+        if file_hash is not None:
+            assert (
+                file_hash.hexdigest() == hash
+            ), f"Downloaded wheel and {scheme} don't match! {file_hash.hexdigest()}, {hash}"
+
+    try:
+        urlopen_with_retry(wheel_url, response_handler=download_response)
+    except HTTPError as e:
+        raise RuntimeError(f"Failed to open wheel URL {wheel_url}") from e
     return wheel_filename
 
 
