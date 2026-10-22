@@ -22,7 +22,7 @@ import time
 import warnings
 from html.parser import HTMLParser
 from urllib.error import HTTPError, URLError
-from urllib.parse import urljoin, urlparse
+from urllib.parse import unquote, urljoin, urlparse
 from urllib.request import urlopen
 
 if sys.version_info >= (3, 11):
@@ -75,7 +75,7 @@ class WheelFilter(HTMLParser):
                         scheme, hash = parsed.fragment.split("=")
                     else:
                         scheme, hash = None, None
-                    wheel_filename = os.path.basename(parsed.path)
+                    wheel_filename = unquote(os.path.basename(parsed.path))
                     # Empty netloc means relative URL
                     if not parsed.netloc:
                         wheel_url = urljoin(self.project_url, parsed.path)
